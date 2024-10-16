@@ -164,48 +164,45 @@ class KeyData : ObservableObject {
     var pressedKey: Key?    = nil
 
     @Published var dragPt   = CGPoint.zero
+    @Published var keyDown  = false
     @Published var hello    = "Hello"
 }
 
 
-// ****************************************************
+struct ModalBlock: View {
+    @StateObject var keyData: KeyData
 
-struct KeypadView: View {
+    var body: some View {
+        if keyData.keyDown {
+            // Transparent rectangle to block all key interactions below the popup - opacity 0 passes key presses through
+            Rectangle()
+                .opacity(0.0001)
+        }
+    }
+}
+
+
+struct SubPopMenu: View {
     let padSpec: PadSpec
     
     @StateObject var keyData: KeyData
-
+    
     let keyInset      = 4.0
-    let longPressTime = 0.5
     
     func hitRect( _ r:CGRect ) -> CGRect {
         // Expand a rect to allow hits below the rect so finger does not block key
         r.insetBy(dx: 0.0, dy: -padSpec.keySpec.height*2)
     }
 
-    // For long press gesture - finger is down
-    @GestureState private var isPressing = false
-
-    
-    @ViewBuilder
-    private var customModal: some View {
-        if isPressing {
-            // Transparent rectangle to block all key interactions below the popup - opacity 0 passes key presses through
-            Rectangle()
-                .opacity(0.0001)
-        }
-    }
-
-
-    @ViewBuilder
-    private var customPopover: some View {
-        if isPressing {
-            let n = keyData.subPad!.keys.count
+    var body: some View {
+        if keyData.keyDown {
+            let n = 5
+//            let n = keyData.subPad!.keys.count
             let keyW = padSpec.keySpec.width
             let keyH = padSpec.keySpec.height
             let nkeys = 0..<n
-            let subkeys = nkeys.map { keyData.subPad!.keys[$0].text! }
-//            let subkeys = nkeys.map { String($0 + 1) }
+//            let subkeys = nkeys.map { keyData.subPad!.keys[$0].text! }
+            let subkeys = nkeys.map { String($0 + 1) }
             let w = padSpec.keySpec.width * Double(n)
             let keyRect = CGRect( origin: CGPoint.zero, size: CGSize( width: keyW, height: keyH)).insetBy(dx: keyInset, dy: keyInset)
             let keySet  = nkeys.map { keyRect.offsetBy( dx: padSpec.keySpec.width*Double($0), dy: 0.0) }
@@ -234,7 +231,7 @@ struct KeypadView: View {
 //                let rectangle = Rectangle().path(in: .zero.insetBy(dx: -5, dy: -5))
 //                gc.fill(rectangle, with: .color(.green))
 //            }
-//            
+//
             GeometryReader { geometry in
                 Rectangle()
                     .frame( width: w, height: keyH)
@@ -276,6 +273,25 @@ struct KeypadView: View {
             }
         }
     }
+}
+
+
+// ****************************************************
+
+struct KeypadView: View {
+    let padSpec: PadSpec
+    
+    @StateObject var keyData: KeyData
+
+    let longPressTime = 0.5
+    
+    func hitRect( _ r:CGRect ) -> CGRect {
+        // Expand a rect to allow hits below the rect so finger does not block key
+        r.insetBy(dx: 0.0, dy: -padSpec.keySpec.height*2)
+    }
+
+    // For long press gesture - finger is down
+    @GestureState private var isPressing = false
 
     var drag: some Gesture {
         DragGesture( minimumDistance: 0, coordinateSpace: .global)
@@ -298,92 +314,80 @@ struct KeypadView: View {
             }
     }
 
-    
     var body: some View {
-        ZStack {
-            GeometryReader { geometry in
-                let zframe = geometry.frame(in: CoordinateSpace.global)
+        VStack {
+            Spacer()
+            HStack( spacing: 0 ) {
+                let keys = padSpec.keys
+                let range = 0..<keys.count
                 
-                VStack {
-                    Spacer()
-                    HStack( spacing: 0 ) {
-                        let keys = padSpec.keys
-                        let range = 0..<keys.count
-                        
-                        ForEach( range, id: \.self) { kx in
-                            let key = padSpec.keys[kx]
-                            let txt = key.text ?? "??"
-                            
-                            VStack {
-                                GeometryReader { geometry in
-                                    let vframe = geometry.frame(in: CoordinateSpace.global)
-                                    
-                                    let longPress =
-                                        LongPressGesture( minimumDuration: longPressTime)
-                                            .sequenced( before: drag )
-                                            .updating($isPressing) { value, state, transaction in
-                                                switch value {
-                                                    
-                                                case .second(true, nil):
-                                                    if let subpad = SubPadSpec.specList[key.kc] {
-                                                        // Start finger tracking
-                                                        keyData.subPad = subpad
-                                                        keyData.keyOrigin = vframe.origin
-                                                        keyData.zFrame = zframe
-                                                        keyData.pressedKey = key
-                                                        state = true
-                                                        
-                                                        // This will pre-select the subkey option above the pressed key
-                                                        keyData.dragPt = CGPoint( x: vframe.midX, y: vframe.minY)
-                                                    }
-                                                    
-                                                default:
-                                                    break
-                                                }
-                                            }
-                                    
-                                    Rectangle()
-                                        .foregroundColor( Color.brown )
-                                        .frame( width: padSpec.keySpec.width, height: padSpec.keySpec.height )
-                                        .cornerRadius( padSpec.keySpec.radius )
-                                        .overlay(
-                                            Text( txt )
-                                                .bold()
-                                                .foregroundColor(Color.white) )
-                                        .simultaneousGesture( longPress )
-                                        .simultaneousGesture(
-                                            TapGesture().onEnded {
-                                                keyData.hello.append("\nRegular tap: \(txt)")
-                                        })
-                                }
-                                
-                            }
-                            .frame( maxWidth: padSpec.keySpec.width, maxHeight: padSpec.keySpec.height )
-                            // .border(.blue)
-                            
-                            if kx != keys.count - 1 {
-                                Spacer()
-                            }
-                        }
-                    }
-                    // Padding and border around key hstack
-                    .padding(0)
-//                    .border(.red)
-//                    .showSizes([.current])
+                ForEach( range, id: \.self) { kx in
+                    let key = padSpec.keys[kx]
+                    let txt = key.text ?? "??"
                     
-                    Spacer()
-                }
-                .border(.green)
-                .padding(0)
-            }
+                    VStack {
+                        GeometryReader { geometry in
+                            let vframe = geometry.frame(in: CoordinateSpace.global)
+                            
+                            let longPress =
+                                LongPressGesture( minimumDuration: longPressTime)
+                                    .sequenced( before: drag )
+                                    .updating($isPressing) { value, state, transaction in
+                                        switch value {
+                                            
+                                        case .second(true, nil):
+                                            if let subpad = SubPadSpec.specList[key.kc] {
+                                                // Start finger tracking
+                                                keyData.subPad = subpad
+                                                keyData.keyOrigin = vframe.origin
+                                                keyData.pressedKey = key
+                                                state = true
+                                                
+                                                // This will pre-select the subkey option above the pressed key
+                                                keyData.dragPt = CGPoint( x: vframe.midX, y: vframe.minY)
+                                            }
+                                            
+                                        default:
+                                            break
+                                        }
+                                    }
 
-            customModal
-            customPopover
+                            Rectangle()
+                                .foregroundColor( Color.brown )
+                                .frame( width: padSpec.keySpec.width, height: padSpec.keySpec.height )
+                                .cornerRadius( padSpec.keySpec.radius )
+                                .overlay(
+                                    Text( txt )
+                                        .bold()
+                                        .foregroundColor(Color.white) )
+                                .simultaneousGesture( longPress )
+                                .onChange( of: isPressing) { _, newState in keyData.keyDown = newState }
+                                .simultaneousGesture(
+                                    TapGesture().onEnded {
+                                        keyData.hello.append("\nRegular tap: \(txt)")
+                                })
+                        }
+                        
+                    }
+                    .frame( maxWidth: padSpec.keySpec.width, maxHeight: padSpec.keySpec.height )
+                    // .border(.blue)
+                    
+                    if kx != keys.count - 1 {
+                        Spacer()
+                    }
+                }
+            }
+            // Padding and border around key hstack
+            .padding(0)
+//          .border(.red)
+//          .showSizes([.current])
+            
+            Spacer()
         }
-        .border(.brown)
-        .padding()
-        .alignmentGuide(HorizontalAlignment.leading) { _ in  0 }
+        .border(.green)
+        .padding(0)
     }
+
 }
 
 
@@ -397,10 +401,24 @@ struct KeyFrame: View {
             Text(keyData.hello)
             Divider()
 
-            HStack( spacing: 0 ) {
-                KeypadView( padSpec: psFunc1, keyData: keyData )
-                KeypadView( padSpec: psFunc2, keyData: keyData )
+            ZStack {
+                HStack( spacing: 0 ) {
+                    KeypadView( padSpec: psFunc1, keyData: keyData )
+                    Spacer()
+                    KeypadView( padSpec: psFunc2, keyData: keyData )
+                }
+                
+                ModalBlock( keyData: keyData )
+                
+                SubPopMenu( padSpec: psFunc1, keyData: keyData)
             }
+            .onGeometryChange( for: CGRect.self, of: {proxy in proxy.frame(in: .global)} ) { newValue in
+                // Save the popup location so we can determine which key was selected when the drag ends
+                keyData.zFrame = newValue
+            }
+            .border(.brown)
+            .padding()
+            .alignmentGuide(HorizontalAlignment.leading) { _ in  0 }
         }
     }
 }
