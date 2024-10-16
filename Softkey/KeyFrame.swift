@@ -163,7 +163,7 @@ struct KeypadView: View {
     
     func hitRect( _ r:CGRect ) -> CGRect {
         // Expand a rect to allow hits below the rect so finger does not block key
-        CGRect( x: r.minX, y: r.minY, width: r.width, height: r.height + padSpec.keySpec.height*2 )
+        r.insetBy(dx: 0.0, dy: -padSpec.keySpec.height*2)
     }
 
     // State Vars
@@ -383,7 +383,7 @@ struct KeypadView: View {
 }
 
 
-struct ContentView: View {
+struct KeyFrame: View {
     @State private var hello: String = "Hello"
 
     var body: some View {
