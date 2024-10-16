@@ -151,12 +151,29 @@ func initKeyLayout() {
 }
 
 
+class KeyData : ObservableObject {
+    //    Origin of pressed key rect
+    //    Rect of outer ZStack
+    //    Point of dragged finger
+    //    Key struct of pressed key
+    //
+    var zFrame: CGRect      = CGRect.zero
+    var subPad: SubPadSpec? = nil
+    var keyOrigin: CGPoint  = CGPoint.zero
+    var popFrame: CGRect    = CGRect.zero
+    var pressedKey: Key?    = nil
+
+    @Published var dragPt   = CGPoint.zero
+    @Published var hello    = "Hello"
+}
+
+
 // ****************************************************
 
 struct KeypadView: View {
-    @Binding var hello: String
-    
     let padSpec: PadSpec
+    
+    @StateObject var keyData: KeyData
 
     let keyInset      = 4.0
     let longPressTime = 0.5
@@ -166,19 +183,6 @@ struct KeypadView: View {
         r.insetBy(dx: 0.0, dy: -padSpec.keySpec.height*2)
     }
 
-    // State Vars
-    //    Origin of pressed key rect
-    //    Rect of outer ZStack
-    //    Point of dragged finger
-    //    Key struct of pressed key
-    //
-    @State private var keyOrigin: CGPoint = CGPoint.zero
-    @State private var zFrame: CGRect = CGRect.zero
-    @State private var dragPt = CGPoint.zero
-    @State private var keyPressed: Key? = nil
-    @State private var subPad: SubPadSpec? = nil
-    @State private var popFrame: CGRect = CGRect.zero
-    
     // For long press gesture - finger is down
     @GestureState private var isPressing = false
 
@@ -196,25 +200,25 @@ struct KeypadView: View {
     @ViewBuilder
     private var customPopover: some View {
         if isPressing {
-            let n = subPad!.keys.count
+            let n = keyData.subPad!.keys.count
             let keyW = padSpec.keySpec.width
             let keyH = padSpec.keySpec.height
             let nkeys = 0..<n
-            let subkeys = nkeys.map { subPad!.keys[$0].text! }
+            let subkeys = nkeys.map { keyData.subPad!.keys[$0].text! }
 //            let subkeys = nkeys.map { String($0 + 1) }
             let w = padSpec.keySpec.width * Double(n)
             let keyRect = CGRect( origin: CGPoint.zero, size: CGSize( width: keyW, height: keyH)).insetBy(dx: keyInset, dy: keyInset)
             let keySet  = nkeys.map { keyRect.offsetBy( dx: padSpec.keySpec.width*Double($0), dy: 0.0) }
-            let zOrigin = self.zFrame.origin
+            let zOrigin = keyData.zFrame.origin
             
             // Keys leading edge x value relative to zFrame
-            let xKey = keyOrigin.x - zOrigin.x
+            let xKey = keyData.keyOrigin.x - zOrigin.x
             
             // Set of all possible x position values for popup
             let xSet = nkeys.map( { xKey - Double($0)*keyW } )
             
             // Filter out values where the popup won't fit in the Z frame
-            let xSet2 = xSet.filter( { $0 >= 0 && ($0 + w) <= zFrame.maxX })
+            let xSet2 = xSet.filter( { $0 >= 0 && ($0 + w) <= keyData.zFrame.maxX })
             
             // Sort by distance from mid popup to mid key
             let xSet3 = xSet2.sorted() { x1, x2 in
@@ -247,7 +251,7 @@ struct KeypadView: View {
                             HStack( spacing: keyInset*2 ) {
                                 ForEach(nkeys, id: \.self) { kn in
                                     let r = keySet[kn].offsetBy(dx: hframe.origin.x, dy: hframe.origin.y)
-                                    let hit = hitRect(r).contains( self.dragPt )
+                                    let hit = hitRect(r).contains( keyData.dragPt )
                                     
                                     Rectangle()
                                         .frame( width: r.width, height: r.height )
@@ -264,11 +268,11 @@ struct KeypadView: View {
                             .frame(maxHeight: .infinity, alignment: .center)
                             .onGeometryChange( for: CGRect.self, of: {proxy in proxy.frame(in: .global)} ) { newValue in
                                 // Save the popup location so we can determine which key was selected when the drag ends
-                                popFrame = newValue
+                                keyData.popFrame = newValue
                             }
                         }
                     }
-                    .position(x: xPop, y: keyOrigin.y - zOrigin.y - keyH/2 - padSpec.keySpec.radius )
+                    .position(x: xPop, y: keyData.keyOrigin.y - zOrigin.y - keyH/2 - padSpec.keySpec.radius )
             }
         }
     }
@@ -277,20 +281,20 @@ struct KeypadView: View {
         DragGesture( minimumDistance: 0, coordinateSpace: .global)
             .onChanged { info in
                 // Track finger movements
-                dragPt = info.location
+                keyData.dragPt = info.location
             }
             .onEnded { _ in
-                let hit = hitRect(popFrame).contains(self.dragPt)
+                let hit = hitRect(keyData.popFrame).contains(keyData.dragPt)
                 
                 if hit {
-                    let x = Int( (dragPt.x - popFrame.minX) / padSpec.keySpec.width )
+                    let x = Int( (keyData.dragPt.x - keyData.popFrame.minX) / padSpec.keySpec.width )
                     
-                    if let pad = subPad {
-                        self.hello.append("\nKeypress: \(pad.keys[x].text!)")
+                    if let pad = keyData.subPad {
+                        keyData.hello.append("\nKeypress: \(pad.keys[x].text!)")
                     }
                 }
                 
-                self.dragPt = CGPoint.zero
+                keyData.dragPt = CGPoint.zero
             }
     }
 
@@ -323,14 +327,14 @@ struct KeypadView: View {
                                                 case .second(true, nil):
                                                     if let subpad = SubPadSpec.specList[key.kc] {
                                                         // Start finger tracking
-                                                        self.subPad = subpad
-                                                        self.keyOrigin = vframe.origin
-                                                        self.zFrame = zframe
-                                                        self.keyPressed = key
+                                                        keyData.subPad = subpad
+                                                        keyData.keyOrigin = vframe.origin
+                                                        keyData.zFrame = zframe
+                                                        keyData.pressedKey = key
                                                         state = true
                                                         
                                                         // This will pre-select the subkey option above the pressed key
-                                                        dragPt = CGPoint( x: vframe.midX, y: vframe.minY)
+                                                        keyData.dragPt = CGPoint( x: vframe.midX, y: vframe.minY)
                                                     }
                                                     
                                                 default:
@@ -349,7 +353,7 @@ struct KeypadView: View {
                                         .simultaneousGesture( longPress )
                                         .simultaneousGesture(
                                             TapGesture().onEnded {
-                                                self.hello.append("\nRegular tap: \(txt)")
+                                                keyData.hello.append("\nRegular tap: \(txt)")
                                         })
                                 }
                                 
@@ -384,18 +388,18 @@ struct KeypadView: View {
 
 
 struct KeyFrame: View {
-    @State private var hello: String = "Hello"
-
+    @StateObject var keyData = KeyData()
+    
     var body: some View {
         VStack {
             Image(systemName: "globe").imageScale(.large).foregroundStyle(.tint)
                     
-            Text(self.hello)
+            Text(keyData.hello)
             Divider()
 
             HStack( spacing: 0 ) {
-                KeypadView( hello: $hello, padSpec: psFunc1 )
-                KeypadView( hello: $hello, padSpec: psFunc2 )
+                KeypadView( padSpec: psFunc1, keyData: keyData )
+                KeypadView( padSpec: psFunc2, keyData: keyData )
             }
         }
     }
