@@ -15,7 +15,8 @@ struct SoftkeyApp: App {
     
     var body: some Scene {
         WindowGroup {
-            KeyFrame()
+            KeyStack() {
+            }
         }
     }
 }
