@@ -277,7 +277,7 @@ let captionFont   = 12.0
 
 
 struct ModalBlock: View {
-    @StateObject var keyData: KeyData
+    @EnvironmentObject var keyData: KeyData
 
     var body: some View {
         if keyData.keyDown {
@@ -292,7 +292,7 @@ struct ModalBlock: View {
 struct SubPopMenu: View {
     let padSpec: PadSpec
     
-    @StateObject var keyData: KeyData
+    @EnvironmentObject var keyData: KeyData
     
     func hitRect( _ r:CGRect ) -> CGRect {
         // Expand a rect to allow hits below the rect so finger does not block key
@@ -376,7 +376,7 @@ struct KeyView: View {
     let padSpec: PadSpec
     let key: Key
 
-    @StateObject var keyData: KeyData
+    @EnvironmentObject var keyData: KeyData
     
     // For long press gesture - finger is down
     @GestureState private var isPressing = false
@@ -511,7 +511,7 @@ struct KeyView: View {
 struct KeypadView: View {
     let padSpec: PadSpec
     
-    @StateObject var keyData: KeyData
+    @EnvironmentObject var keyData: KeyData
 
     private func partitionKeylist( keys: [Key], rowMax: Int ) -> [[Key]] {
         /// Breakup list of keys into list of rows
@@ -554,7 +554,7 @@ struct KeypadView: View {
                     ForEach( 0..<keys.count, id: \.self) { kx in
                         let key = keys[kx]
                         
-                        KeyView( padSpec: padSpec, key: key, keyData: keyData )
+                        KeyView( padSpec: padSpec, key: key )
                     }
                 }
                 // Padding and border around key hstack
@@ -585,27 +585,27 @@ struct KeyStack<Content: View>: View {
                 VStack {
                     Spacer()
                     HStack( spacing: 0 ) {
-                        KeypadView( padSpec: psFunctionsL, keyData: keyData )
+                        KeypadView( padSpec: psFunctionsL )
                         Spacer()
-                        KeypadView( padSpec: psFunctionsR, keyData: keyData )
+                        KeypadView( padSpec: psFunctionsR )
                     }
                     Divider()
                     HStack( spacing: 0 ) {
                         VStack {
-                            KeypadView( padSpec: psNumeric, keyData: keyData )
-                            KeypadView( padSpec: psEnter, keyData: keyData )
+                            KeypadView( padSpec: psNumeric )
+                            KeypadView( padSpec: psEnter )
                         }
                         Spacer()
                         VStack {
-                            KeypadView( padSpec: psOperations, keyData: keyData )
-                            KeypadView( padSpec: psClear, keyData: keyData )
+                            KeypadView( padSpec: psOperations )
+                            KeypadView( padSpec: psClear )
                         }
                     }
                     Divider()
                     HStack {
-                        KeypadView( padSpec: psFormatL, keyData: keyData )
+                        KeypadView( padSpec: psFormatL )
                         Spacer()
-                        KeypadView( padSpec: psFormatR, keyData: keyData )
+                        KeypadView( padSpec: psFormatR )
                     }
                     Spacer()
                 }
@@ -613,9 +613,9 @@ struct KeyStack<Content: View>: View {
                 
                 content
                 
-                ModalBlock( keyData: keyData )
+                ModalBlock()
                 
-                SubPopMenu( padSpec: psFunc1, keyData: keyData)
+                SubPopMenu( padSpec: psFunc1 )
             }
             .onGeometryChange( for: CGRect.self, of: {proxy in proxy.frame(in: .global)} ) { newValue in
                 // Save the popup location so we can determine which key was selected when the drag ends
@@ -625,6 +625,7 @@ struct KeyStack<Content: View>: View {
             .padding()
             .alignmentGuide(HorizontalAlignment.leading) { _ in  0 }
         }
+        .environmentObject(keyData)
     }
 }
 
