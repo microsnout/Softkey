@@ -32,33 +32,6 @@ extension View {
 
 // **********************************************
 
-enum KeyCode: Int {
-    case key0 = 0, key1, key2, key3, key4, key5, key6, key7, key8, key9
-    
-    case plus = 10, minus, times, divide
-    
-    case dot = 20, enter, clear, back, sign, eex
-    
-    case fixL = 30, fixR, roll, xy, xz, yz, lastx
-    
-    case y2x = 40, inv, x2, sqrt
-    
-    case fn0 = 50, sin, cos, tan, log, ln, pi, asin, acos, atan
-    
-    case tenExp = 60, eExp, e
-    
-    case fix = 70, sci, eng, percent, currency
-    
-    case deg = 80, rad, sec, min, hr, yr, mm, cm, m, km
-    
-    case noop = 90
-    
-    case sk0 = 100, sk1, sk2, sk3, sk4, sk5, sk6
-}
-
-
-// ****************************************
-
 typealias KeyID = Int
 
 typealias  KeyEvent = KeyCode
@@ -119,132 +92,6 @@ struct PadSpec {
     var keys: [Key]
     var fontSize: Double = 18.0
     var caption: String?
-}
-
-
-// ****************************************************
-// Sample keyboard data - move to other file
-
-let ksSoftkey = KeySpec( width: 45, height: 30 )
-let ksNormal = KeySpec( width: 45, height: 45 )
-
-let psFunctionsL = PadSpec(
-        keySpec: ksSoftkey,
-        cols: 6,
-        keys: [ Key(.sin, "sin"),
-                Key(.cos, "cos"),
-                Key(.tan, "tan"),
-            ]
-    )
-
-let psFunctionsR = PadSpec(
-        keySpec: ksSoftkey,
-        cols: 6,
-        keys: [ Key(.log, "log"),
-                Key(.ln,  "ln"),
-                Key(.pi,  "\u{1d70b}")
-            ]
-    )
-    
-let psFunc1 = PadSpec(
-        keySpec: ksSoftkey,
-        cols: 3,
-        keys: [ Key(.sin, "sin"),
-                Key(.cos, "cos"),
-                Key(.tan, "tan")
-            ]
-    )
-    
-let psFunc2 = PadSpec(
-        keySpec: ksSoftkey,
-        cols: 3,
-        keys: [ Key(.log, "log"),
-                Key(.ln,  "ln"),
-                Key(.pi,  "\u{1d70b}")
-            ]
-    )
-    
-let psNumeric = PadSpec(
-        keySpec: ksNormal,
-        cols: 3,
-        keys: [ Key(.key7, "7"), Key(.key8, "8"), Key(.key9, "9"),
-                Key(.key4, "4"), Key(.key5, "5"), Key(.key6, "6"),
-                Key(.key1, "1"), Key(.key2, "2"), Key(.key3, "3"),
-                Key(.key0, "0"), Key(.dot, "."),  Key(.sign, "+/-", fontSize: 15)
-              ]
-    )
-
-let psEnter = PadSpec(
-        keySpec: ksNormal,
-        cols: 3,
-        keys: [ Key(.enter, "Enter", size: 2, fontSize: 15), Key(.eex, "EE", fontSize: 15)
-              ]
-    )
-
-let psOperations = PadSpec(
-    keySpec: ksNormal,
-    cols: 3,
-    keys: [ Key(.divide, "÷", fontSize: 24.0), Key(.fixL, ".00\u{2190}", fontSize: 14.0), Key(.y2x, image: .yx),
-            Key(.times, "×", fontSize: 24.0),  Key(.lastx, "LASTx", fontSize: 12.0),      Key(.inv, image: .onex),
-            Key(.minus, "−", fontSize: 24.0),  Key(.xy, "X\u{21c6}Y", fontSize: 14.0),    Key(.x2,  image: .x2),
-            Key(.plus,  "+", fontSize: 24.0),  Key(.roll, "R\u{2193}", fontSize: 14.0),   Key(.sqrt,image: .rx)
-          ])
-
-let psClear = PadSpec(
-    keySpec: ksNormal,
-    cols: 3,
-    keys: [ Key(.back, "BACK/UNDO", size: 2, fontSize: 12.0), Key(.clear, "CLx", fontSize: 14.0) ])
-
-let psFormatL = PadSpec (
-    keySpec: ksSoftkey,
-    cols: 3,
-    keys: [ Key(.fix, "fix"),
-            Key(.sci, "sci"),
-            Key(.percent, "%"),
-        ],
-    fontSize: 14.0
-)
-
-let psFormatR = PadSpec (
-    keySpec: ksSoftkey,
-    cols: 3,
-    keys: [ Key(.currency, "$"),
-            Key(.fixL, ".00\u{2190}", fontSize: 12.0),
-            Key(.fixR, ".00\u{2192}", fontSize: 12.0),
-        ],
-    fontSize: 14.0
-)
-
-func initKeyLayout() {
-    SubPadSpec.define( .sin,
-                       keys: [
-                        Key(.sin, "sin"),
-                        Key(.cos, "cos"),
-                        Key(.tan, "tan")
-                       ],
-                       fontSize: 14.0
-    )
-    
-    SubPadSpec.define( .log,
-                       keys: [
-                        Key(.acos, "acos"),
-                        Key(.asin, "asin"),
-                        Key(.atan, "atan"),
-                        Key(.log,  "log"),
-                        Key(.ln,   "ln")
-                       ],
-                       caption: "Functions",
-                       fontSize: 14.0
-    )
-    
-    SubPadSpec.define( .xy,
-                       keys: [
-                        Key(.xy, "X\u{21c6}Z", fontSize: 14.0),
-                        Key(.xy, "X\u{21c6}Y", fontSize: 14.0),
-                        Key(.xy, "Y\u{21c6}Z", fontSize: 14.0)
-                       ],
-                       fontSize: 14.0
-    )
 }
 
 
@@ -391,7 +238,7 @@ struct KeyView: View {
         let keyW = padSpec.keySpec.width
         let keyH = padSpec.keySpec.height
         let nkeys = 0..<n
-        let w = padSpec.keySpec.width * Double(n)
+        let popW = keyW * Double(n)
         let zOrigin = keyData.zFrame.origin
         
         // Keys leading edge x value relative to zFrame
@@ -401,22 +248,23 @@ struct KeyView: View {
         let xSet = nkeys.map( { xKey - Double($0)*keyW } )
         
         // Filter out values where the popup won't fit in the Z frame
-        let xSet2 = xSet.filter( { $0 >= 0 && ($0 + w) <= keyData.zFrame.maxX })
+        let xSet2 = xSet.filter( { x in x >= 0 && (x + popW) <= keyData.zFrame.maxX })
         
         // Sort by distance from mid popup to mid key
         let xSet3 = xSet2.sorted() { x1, x2 in
-            let offset = w/2 - xKey - keyW/2
+            let offset = popW/2 - xKey - keyW/2
             return abs(x1+offset) < abs(x2+offset)
         }
         
         // Choose the value that optimally centers the popup over the key
         let xPop = xSet3[0]
         
+        // Popup height is augmented if the pop spec includes a caption
         let popH = padSpec.caption == nil ? keyH : keyH*2 + popCaptionH
         
         // Write popup location and size to state object
         keyData.popFrame = CGRect( x: xPop + zOrigin.x, y: keyData.keyOrigin.y - keyH - padSpec.keySpec.radius,
-                                   width: w, height: popH)
+                                   width: popW, height: popH)
     }
     
     var drag: some Gesture {
@@ -559,8 +407,7 @@ struct KeypadView: View {
                 }
                 // Padding and border around key hstack
                 .padding(0)
-                //          .border(.red)
-                //          .showSizes([.current])
+//                .border(.red)
             }
         }
         .border(.green)
@@ -582,35 +429,6 @@ struct KeyStack<Content: View>: View {
             Divider()
 
             ZStack {
-                VStack {
-                    Spacer()
-                    HStack( spacing: 0 ) {
-                        KeypadView( padSpec: psFunctionsL )
-                        Spacer()
-                        KeypadView( padSpec: psFunctionsR )
-                    }
-                    Divider()
-                    HStack( spacing: 0 ) {
-                        VStack {
-                            KeypadView( padSpec: psNumeric )
-                            KeypadView( padSpec: psEnter )
-                        }
-                        Spacer()
-                        VStack {
-                            KeypadView( padSpec: psOperations )
-                            KeypadView( padSpec: psClear )
-                        }
-                    }
-                    Divider()
-                    HStack {
-                        KeypadView( padSpec: psFormatL )
-                        Spacer()
-                        KeypadView( padSpec: psFormatR )
-                    }
-                    Spacer()
-                }
-                .padding( 35 )
-                
                 content
                 
                 ModalBlock()
@@ -618,7 +436,6 @@ struct KeyStack<Content: View>: View {
                 SubPopMenu( padSpec: psFunc1 )
             }
             .onGeometryChange( for: CGRect.self, of: {proxy in proxy.frame(in: .global)} ) { newValue in
-                // Save the popup location so we can determine which key was selected when the drag ends
                 keyData.zFrame = newValue
             }
             .border(.brown)
