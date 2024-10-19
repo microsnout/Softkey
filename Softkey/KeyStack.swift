@@ -39,7 +39,7 @@ enum KeyCode: Int {
     
     case dot = 20, enter, clear, back, sign, eex
     
-    case fixL = 30, fixR, roll, xy, lastx, sto, rcl, mPlus, mMinus
+    case fixL = 30, fixR, roll, xy, xz, yz, lastx
     
     case y2x = 40, inv, x2, sqrt
     
@@ -103,12 +103,13 @@ struct Key: Identifiable {
 struct SubPadSpec {
     var kc: KeyCode
     var keys: [Key]
+    var caption: String?
     var fontSize: Double?
 
     static var specList: [KeyCode : SubPadSpec] = [:]
     
-    static func define( _ kc: KeyCode, keys: [Key], fontSize: Double? = nil ) {
-        SubPadSpec.specList[kc] = SubPadSpec( kc: kc, keys: keys, fontSize: fontSize)
+    static func define( _ kc: KeyCode, keys: [Key], caption: String? = nil, fontSize: Double? = nil ) {
+        SubPadSpec.specList[kc] = SubPadSpec( kc: kc, keys: keys, caption: caption, fontSize: fontSize)
     }
 }
 
@@ -127,13 +128,19 @@ struct PadSpec {
 let ksSoftkey = KeySpec( width: 45, height: 30 )
 let ksNormal = KeySpec( width: 45, height: 45 )
 
-let psFuntions = PadSpec(
+let psFunctionsL = PadSpec(
         keySpec: ksSoftkey,
         cols: 6,
         keys: [ Key(.sin, "sin"),
                 Key(.cos, "cos"),
                 Key(.tan, "tan"),
-                Key(.log, "log"),
+            ]
+    )
+
+let psFunctionsR = PadSpec(
+        keySpec: ksSoftkey,
+        cols: 6,
+        keys: [ Key(.log, "log"),
                 Key(.ln,  "ln"),
                 Key(.pi,  "\u{1d70b}")
             ]
@@ -188,6 +195,25 @@ let psClear = PadSpec(
     cols: 3,
     keys: [ Key(.back, "BACK/UNDO", size: 2, fontSize: 12.0), Key(.clear, "CLx", fontSize: 14.0) ])
 
+let psFormatL = PadSpec (
+    keySpec: ksSoftkey,
+    cols: 3,
+    keys: [ Key(.fix, "fix"),
+            Key(.sci, "sci"),
+            Key(.percent, "%"),
+        ],
+    fontSize: 14.0
+)
+
+let psFormatR = PadSpec (
+    keySpec: ksSoftkey,
+    cols: 3,
+    keys: [ Key(.currency, "$"),
+            Key(.fixL, ".00\u{2190}", fontSize: 12.0),
+            Key(.fixR, ".00\u{2192}", fontSize: 12.0),
+        ],
+    fontSize: 14.0
+)
 
 func initKeyLayout() {
     SubPadSpec.define( .sin,
@@ -206,6 +232,16 @@ func initKeyLayout() {
                         Key(.atan, "atan"),
                         Key(.log,  "log"),
                         Key(.ln,   "ln")
+                       ],
+                       caption: "Functions",
+                       fontSize: 14.0
+    )
+    
+    SubPadSpec.define( .xy,
+                       keys: [
+                        Key(.xy, "X\u{21c6}Z", fontSize: 14.0),
+                        Key(.xy, "X\u{21c6}Y", fontSize: 14.0),
+                        Key(.xy, "Y\u{21c6}Z", fontSize: 14.0)
                        ],
                        fontSize: 14.0
     )
@@ -236,6 +272,8 @@ let longPressTime = 0.5
 let keyInset      = 4.0
 let keyHspace     = 10.0
 let keyVspace     = 10.0
+let popCaptionH   = 13.0
+let captionFont   = 12.0
 
 
 struct ModalBlock: View {
@@ -272,6 +310,7 @@ struct SubPopMenu: View {
             let keyRect = CGRect( origin: CGPoint.zero, size: CGSize( width: keyW, height: keyH)).insetBy(dx: keyInset/2, dy: keyInset/2)
             let keySet  = nkeys.map { keyRect.offsetBy( dx: padSpec.keySpec.width*Double($0), dy: 0.0) }
             let zOrigin = keyData.zFrame.origin
+            let popH = keyData.subPad!.caption == nil ? keyH + keyInset : keyH + keyInset + popCaptionH
             
 //            Canvas { gc, size in
 //                gc.translateBy(x: size.width / 2, y: size.height / 2)
@@ -280,39 +319,52 @@ struct SubPopMenu: View {
 //            }
 //
             Rectangle()
-                .frame( width: w + keyInset, height: keyH + keyInset)
+                .frame( width: w + keyInset, height: popH)
                 .foregroundColor(padSpec.keySpec.keyColor)
-                .cornerRadius(padSpec.keySpec.radius)
+                .cornerRadius(padSpec.keySpec.radius*2)
                 .background {
-                    RoundedRectangle(cornerRadius: padSpec.keySpec.radius)
-                        .shadow(radius: padSpec.keySpec.radius)
+                    RoundedRectangle(cornerRadius: padSpec.keySpec.radius*2)
+                        .shadow(radius: padSpec.keySpec.radius*2)
                 }
                 .overlay {
                     GeometryReader { geo in
                         let hframe = geo.frame(in: CoordinateSpace.global)
                         
-                        HStack( spacing: keyInset ) {
-                            ForEach(nkeys, id: \.self) { kn in
-                                let r = keySet[kn].offsetBy(dx: hframe.origin.x, dy: hframe.origin.y)
-                                let hit = hitRect(r).contains( keyData.dragPt )
-                                
-                                Rectangle()
-                                    .frame( width: r.width, height: r.height )
-                                    .cornerRadius(padSpec.keySpec.radius)
-                                    .foregroundColor( hit  ?  Color.blue : padSpec.keySpec.keyColor)
-                                    .overlay {
-                                        Text( subkeys[kn] )
-                                            .font(.system(size: keyData.subPad!.fontSize == nil ? padSpec.fontSize : keyData.subPad!.fontSize! ))
-                                            .bold()
-                                            .foregroundColor(padSpec.keySpec.textColor)
-                                    }
+                        VStack(spacing: 0) {
+                            if let caption = keyData.subPad!.caption {
+                                HStack {
+                                    Text(caption)
+                                        .bold()
+                                        .font(.system(size: captionFont))
+                                        .foregroundColor(padSpec.keySpec.textColor)
+                                        .frame( maxWidth: .infinity, alignment: .leading)
+                                        .offset( x: 10, y: 4 )
+//                                    Spacer()
+                                }
                             }
+                            HStack( spacing: keyInset ) {
+                                ForEach(nkeys, id: \.self) { kn in
+                                    let r = keySet[kn].offsetBy(dx: hframe.origin.x, dy: hframe.origin.y)
+                                    let hit = hitRect(r).contains( keyData.dragPt )
+                                    
+                                    Rectangle()
+                                        .frame( width: r.width, height: r.height )
+                                        .cornerRadius(padSpec.keySpec.radius)
+                                        .foregroundColor( hit  ?  Color.blue : padSpec.keySpec.keyColor)
+                                        .overlay {
+                                            Text( subkeys[kn] )
+                                                .font(.system(size: keyData.subPad!.fontSize == nil ? padSpec.fontSize : keyData.subPad!.fontSize! ))
+                                                .bold()
+                                                .foregroundColor(padSpec.keySpec.textColor)
+                                        }
+                                }
+                            }
+                            .padding(.leading, keyInset)
+                            .frame(maxHeight: .infinity, alignment: .center)
                         }
-                        .padding(.leading, keyInset)
-                        .frame(maxHeight: .infinity, alignment: .center)
                     }
                 }
-                .position(x: keyData.popFrame.minX - zOrigin.x + w/2, y: keyData.keyOrigin.y - zOrigin.y - keyH/2 - padSpec.keySpec.radius )
+                .position(x: keyData.popFrame.minX - zOrigin.x + w/2, y: keyData.keyOrigin.y - zOrigin.y - keyData.popFrame.height/2 - padSpec.keySpec.radius )
         }
     }
 }
@@ -360,9 +412,11 @@ struct KeyView: View {
         // Choose the value that optimally centers the popup over the key
         let xPop = xSet3[0]
         
+        let popH = padSpec.caption == nil ? keyH : keyH*2 + popCaptionH
+        
         // Write popup location and size to state object
         keyData.popFrame = CGRect( x: xPop + zOrigin.x, y: keyData.keyOrigin.y - keyH - padSpec.keySpec.radius,
-                                   width: w, height: keyH)
+                                   width: w, height: popH)
     }
     
     var drag: some Gesture {
@@ -531,13 +585,11 @@ struct KeyStack<Content: View>: View {
                 VStack {
                     Spacer()
                     HStack( spacing: 0 ) {
-                        KeypadView( padSpec: psFunc1, keyData: keyData )
+                        KeypadView( padSpec: psFunctionsL, keyData: keyData )
                         Spacer()
-                        KeypadView( padSpec: psFunc2, keyData: keyData )
+                        KeypadView( padSpec: psFunctionsR, keyData: keyData )
                     }
-                    Spacer()
                     Divider()
-                    Spacer()
                     HStack( spacing: 0 ) {
                         VStack {
                             KeypadView( padSpec: psNumeric, keyData: keyData )
@@ -549,8 +601,15 @@ struct KeyStack<Content: View>: View {
                             KeypadView( padSpec: psClear, keyData: keyData )
                         }
                     }
+                    Divider()
+                    HStack {
+                        KeypadView( padSpec: psFormatL, keyData: keyData )
+                        Spacer()
+                        KeypadView( padSpec: psFormatR, keyData: keyData )
+                    }
                     Spacer()
                 }
+                .padding( 35 )
                 
                 content
                 
@@ -571,5 +630,7 @@ struct KeyStack<Content: View>: View {
 
 
 //#Preview {
-//    KeypadView( .functions )
+//    KeyStack() {
+//        
+//    }
 //}
