@@ -108,6 +108,8 @@ class KeyData : ObservableObject {
     var keyOrigin: CGPoint  = CGPoint.zero
     var popFrame: CGRect    = CGRect.zero
     var pressedKey: Key?    = nil
+    var selSubkey: Key?     = nil
+    var selSubIndex: Int    = -1
 
     @Published var dragPt   = CGPoint.zero
     @Published var keyDown  = false
@@ -192,13 +194,12 @@ struct SubPopMenu: View {
                             HStack( spacing: keyInset ) {
                                 ForEach(nkeys, id: \.self) { kn in
                                     let r = keySet[kn].offsetBy(dx: hframe.origin.x, dy: hframe.origin.y)
-                                    let hit = hitRect(r).contains( keyData.dragPt )
                                     let key = subkeys[kn]
                                     
                                     Rectangle()
                                         .frame( width: r.width, height: r.height )
                                         .cornerRadius(padSpec.keySpec.radius)
-                                        .foregroundColor( hit  ?  Color.blue : padSpec.keySpec.keyColor)
+                                        .foregroundColor( kn == keyData.selSubIndex  ?  Color.blue : padSpec.keySpec.keyColor)
                                         .if( key.text != nil ) { view in
                                             view.overlay(
                                                 Text( key.text! )
@@ -234,6 +235,8 @@ struct KeyView: View {
     // For long press gesture - finger is down
     @GestureState private var isPressing = false
     
+    let hapticFeedback = UIImpactFeedbackGenerator(style: .medium)
+
     private func hitRect( _ r:CGRect ) -> CGRect {
         // Expand a rect to allow hits below the rect so finger does not block key
         r.insetBy(dx: 0.0, dy: -padSpec.keySpec.height*2)
@@ -278,31 +281,58 @@ struct KeyView: View {
             .onChanged { info in
                 // Track finger movements
                 keyData.dragPt = info.location
+                
+                if let subPad = keyData.subPad {
+                    if hitRect(keyData.popFrame).contains(keyData.dragPt) {
+                        let x = Int( (keyData.dragPt.x - keyData.popFrame.minX) / padSpec.keySpec.width )
+                        
+                        let newKey = subPad.keys.indices.contains(x) ? subPad.keys[x] : nil
+                        
+                        if let new = newKey {
+                            if keyData.selSubkey == nil || keyData.selSubkey!.kc != new.kc {
+                                hapticFeedback.impactOccurred()
+                            }
+                        }
+                        keyData.selSubkey = newKey
+                        keyData.selSubIndex = x
+                    }
+                    else {
+                        keyData.selSubkey = nil
+                        keyData.selSubIndex = -1
+                    }
+                }
             }
             .onEnded { _ in
-                let hit = hitRect(keyData.popFrame).contains(keyData.dragPt)
-                
-                if hit {
-                    let x = Int( (keyData.dragPt.x - keyData.popFrame.minX) / padSpec.keySpec.width )
-                    
-                    if let pad = keyData.subPad {
-                        if let txt = pad.keys[x].text{
-                            keyData.hello.append("\nKeypress: \(txt)")
-                        }
-                        else {
-                            keyData.hello.append("\nKeypress: ??")
-                        }
+                if let key = keyData.selSubkey
+                {
+                    if let txt = key.text {
+                        keyData.hello.append("\nKeypress: \(txt)")
+                    }
+                    else {
+                        keyData.hello.append("\nKeypress: ??")
                     }
                 }
                 
                 keyData.dragPt = CGPoint.zero
+                keyData.selSubkey = nil
+                keyData.pressedKey = nil
             }
     }
+    
+    
+    var yellowCircle: some View {
+        Circle()
+            .foregroundStyle(.yellow)
+            .frame(width: 5, height: 5)
+    }
+    
     
     
     var body: some View {
 
         let keyW = padSpec.keySpec.width * Double(key.size) + Double(key.size - 1) * keyHspace
+        
+        let hasSubpad = SubPadSpec.specList[key.kc] != nil
         
         VStack {
             let txt = key.text ?? "??"
@@ -346,6 +376,7 @@ struct KeyView: View {
                     .simultaneousGesture(
                         TapGesture().onEnded {
                             keyData.hello.append("\nRegular tap: \(txt)")
+                            hapticFeedback.impactOccurred()
                         })
                     .if( key.text != nil ) { view in
                         view.overlay(
@@ -357,6 +388,13 @@ struct KeyView: View {
                     .if ( key.image != nil ) { view in
                         view.overlay(
                             Image(key.image!).renderingMode(.template).foregroundColor(padSpec.keySpec.textColor), alignment: .center)
+                    }
+                    .if( hasSubpad ) { view in
+                        view.overlay(alignment: .topTrailing) {
+                            yellowCircle
+                                .alignmentGuide(.top) { $0[.top] - 3}
+                                .alignmentGuide(.trailing) { $0[.trailing] + 3 }
+                        }
                     }
             }
             

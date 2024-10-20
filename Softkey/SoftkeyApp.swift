@@ -149,9 +149,9 @@ func initKeyLayout() {
     
     SubPadSpec.define( .xy,
                        keys: [
-                        Key(.xy, "X\u{21c6}Z", fontSize: 14.0),
+                        Key(.xz, "X\u{21c6}Z", fontSize: 14.0),
                         Key(.xy, "X\u{21c6}Y", fontSize: 14.0),
-                        Key(.xy, "Y\u{21c6}Z", fontSize: 14.0)
+                        Key(.yz, "Y\u{21c6}Z", fontSize: 14.0)
                        ],
                        fontSize: 14.0
     )
