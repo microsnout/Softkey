@@ -158,7 +158,57 @@ func initKeyLayout() {
 }
 
 
+class SoftkeyModel: ObservableObject, KeyPressHandler {
+    
+    @Published var display: String = "Hello"
+    
+    func keyPress(_ event: KeyEvent ) {
+        display.append("\nKeypress: \(event)")
+    }
+}
+
+
 // ****************************************
+
+struct SoftkeyView: View {
+    @StateObject var model = SoftkeyModel()
+
+    var body: some View {
+        
+        KeyStack() {
+            VStack {
+                Text(model.display)
+                Spacer()
+                HStack {
+                    KeypadView( padSpec: psFunctionsL, keyPressHandler: model )
+                    Spacer()
+                    KeypadView( padSpec: psFunctionsR, keyPressHandler: model )
+                }
+                Divider()
+                HStack {
+                    VStack( spacing: 15 ) {
+                        KeypadView( padSpec: psNumeric, keyPressHandler: model )
+                        KeypadView( padSpec: psEnter, keyPressHandler: model )
+                    }
+                    Spacer()
+                    VStack( spacing: 15 ) {
+                        KeypadView( padSpec: psOperations, keyPressHandler: model )
+                        KeypadView( padSpec: psClear, keyPressHandler: model )
+                    }
+                }
+                Divider()
+                HStack {
+                    KeypadView( padSpec: psFormatL, keyPressHandler: model )
+                    Spacer()
+                    KeypadView( padSpec: psFormatR, keyPressHandler: model )
+                }
+                Spacer()
+            }
+            .padding( 35 )
+        }
+    }
+}
+
 
 @main
 struct SoftkeyApp: App {
@@ -168,36 +218,7 @@ struct SoftkeyApp: App {
     
     var body: some Scene {
         WindowGroup {
-            KeyStack() {
-                VStack {
-                    Spacer()
-                    HStack {
-                        KeypadView( padSpec: psFunctionsL )
-                        Spacer()
-                        KeypadView( padSpec: psFunctionsR )
-                    }
-                    Divider()
-                    HStack {
-                        VStack( spacing: 15 ) {
-                            KeypadView( padSpec: psNumeric )
-                            KeypadView( padSpec: psEnter )
-                        }
-                        Spacer()
-                        VStack( spacing: 15 ) {
-                            KeypadView( padSpec: psOperations )
-                            KeypadView( padSpec: psClear )
-                        }
-                    }
-                    Divider()
-                    HStack {
-                        KeypadView( padSpec: psFormatL )
-                        Spacer()
-                        KeypadView( padSpec: psFormatR )
-                    }
-                    Spacer()
-                }
-                .padding( 35 )
-            }
+            SoftkeyView()
         }
     }
 }

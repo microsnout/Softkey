@@ -229,6 +229,7 @@ struct SubPopMenu: View {
 struct KeyView: View {
     let padSpec: PadSpec
     let key: Key
+    let keyPressHandler: KeyPressHandler
 
     @EnvironmentObject var keyData: KeyData
     
@@ -314,6 +315,8 @@ struct KeyView: View {
                     else {
                         keyData.hello.append("\nKeypress: ??")
                     }
+                    
+                     keyPressHandler.keyPress(key.kc)
                 }
                 
                 keyData.dragPt = CGPoint.zero
@@ -381,6 +384,7 @@ struct KeyView: View {
                         TapGesture().onEnded {
                             keyData.hello.append("\nRegular tap: \(txt)")
                             hapticFeedback.impactOccurred()
+                            keyPressHandler.keyPress(key.kc)
                         })
                     .if( key.text != nil ) { view in
                         view.overlay(
@@ -411,7 +415,9 @@ struct KeyView: View {
 
 struct KeypadView: View {
     let padSpec: PadSpec
-    
+       
+    let keyPressHandler: KeyPressHandler
+ 
     @EnvironmentObject var keyData: KeyData
 
     private func partitionKeylist( keys: [Key], rowMax: Int ) -> [[Key]] {
@@ -455,7 +461,7 @@ struct KeypadView: View {
                     ForEach( 0..<keys.count, id: \.self) { kx in
                         let key = keys[kx]
                         
-                        KeyView( padSpec: padSpec, key: key )
+                        KeyView( padSpec: padSpec, key: key, keyPressHandler: keyPressHandler )
                     }
                 }
                 // Padding and border around key hstack
@@ -475,26 +481,19 @@ struct KeyStack<Content: View>: View {
     @ViewBuilder let content: Content
     
     var body: some View {
-        VStack {
-            Image(systemName: "globe").imageScale(.large).foregroundStyle(.tint)
-                    
-            Text(keyData.hello)
-            Divider()
-
-            ZStack {
-                content
-                
-                ModalBlock()
-                
-                SubPopMenu( padSpec: psFunc1 )
-            }
-            .onGeometryChange( for: CGRect.self, of: {proxy in proxy.frame(in: .global)} ) { newValue in
-                keyData.zFrame = newValue
-            }
-            .border(.brown)
-            .padding()
-            .alignmentGuide(HorizontalAlignment.leading) { _ in  0 }
+        ZStack {
+            content
+            
+            ModalBlock()
+            
+            SubPopMenu( padSpec: psFunc1 )
         }
+        .onGeometryChange( for: CGRect.self, of: {proxy in proxy.frame(in: .global)} ) { newValue in
+            keyData.zFrame = newValue
+        }
+        .border(.brown)
+        .padding()
+        .alignmentGuide(HorizontalAlignment.leading) { _ in  0 }
         .environmentObject(keyData)
     }
 }
