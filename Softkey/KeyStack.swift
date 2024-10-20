@@ -276,31 +276,34 @@ struct KeyView: View {
                                    width: popW, height: popH)
     }
     
+    private func trackDragPt() {
+        if let subPad = keyData.subPad {
+            if hitRect(keyData.popFrame).contains(keyData.dragPt) {
+                let x = Int( (keyData.dragPt.x - keyData.popFrame.minX) / padSpec.keySpec.width )
+                
+                let newKey = subPad.keys.indices.contains(x) ? subPad.keys[x] : nil
+                
+                if let new = newKey {
+                    if keyData.selSubkey == nil || keyData.selSubkey!.kc != new.kc {
+                        hapticFeedback.impactOccurred()
+                    }
+                }
+                keyData.selSubkey = newKey
+                keyData.selSubIndex = x
+            }
+            else {
+                keyData.selSubkey = nil
+                keyData.selSubIndex = -1
+            }
+        }
+    }
+    
     var drag: some Gesture {
         DragGesture( minimumDistance: 0, coordinateSpace: .global)
             .onChanged { info in
                 // Track finger movements
                 keyData.dragPt = info.location
-                
-                if let subPad = keyData.subPad {
-                    if hitRect(keyData.popFrame).contains(keyData.dragPt) {
-                        let x = Int( (keyData.dragPt.x - keyData.popFrame.minX) / padSpec.keySpec.width )
-                        
-                        let newKey = subPad.keys.indices.contains(x) ? subPad.keys[x] : nil
-                        
-                        if let new = newKey {
-                            if keyData.selSubkey == nil || keyData.selSubkey!.kc != new.kc {
-                                hapticFeedback.impactOccurred()
-                            }
-                        }
-                        keyData.selSubkey = newKey
-                        keyData.selSubIndex = x
-                    }
-                    else {
-                        keyData.selSubkey = nil
-                        keyData.selSubIndex = -1
-                    }
-                }
+                trackDragPt()
             }
             .onEnded { _ in
                 if let key = keyData.selSubkey
@@ -353,11 +356,12 @@ struct KeyView: View {
                                 keyData.keyOrigin = vframe.origin
                                 keyData.pressedKey = key
                                 
+                                computeSubpadGeometry()
+                                                                
                                 // This will pre-select the subkey option above the pressed key
                                 keyData.dragPt = CGPoint( x: vframe.midX, y: vframe.minY)
-                                
-                                computeSubpadGeometry()
-                                
+                                trackDragPt()
+
                                 // Initiate popup menu
                                 state = true
                             }

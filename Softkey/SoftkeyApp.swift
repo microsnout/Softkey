@@ -70,7 +70,7 @@ let psFunc2 = PadSpec(
         cols: 3,
         keys: [ Key(.log, "log"),
                 Key(.ln,  "ln"),
-                Key(.pi,  "\u{1d70b}")
+                Key(.pi,  "\u{1d70b}", fontSize: 24.0)
             ]
     )
     
