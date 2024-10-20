@@ -152,7 +152,7 @@ struct SubPopMenu: View {
             let keyW = padSpec.keySpec.width
             let keyH = padSpec.keySpec.height
             let nkeys = 0..<n
-            let subkeys = nkeys.map { keyData.subPad!.keys[$0].text! }
+            let subkeys = nkeys.map { keyData.subPad!.keys[$0] }
             let w = keyData.popFrame.width
             let keyRect = CGRect( origin: CGPoint.zero, size: CGSize( width: keyW, height: keyH)).insetBy(dx: keyInset/2, dy: keyInset/2)
             let keySet  = nkeys.map { keyRect.offsetBy( dx: padSpec.keySpec.width*Double($0), dy: 0.0) }
@@ -193,16 +193,22 @@ struct SubPopMenu: View {
                                 ForEach(nkeys, id: \.self) { kn in
                                     let r = keySet[kn].offsetBy(dx: hframe.origin.x, dy: hframe.origin.y)
                                     let hit = hitRect(r).contains( keyData.dragPt )
+                                    let key = subkeys[kn]
                                     
                                     Rectangle()
                                         .frame( width: r.width, height: r.height )
                                         .cornerRadius(padSpec.keySpec.radius)
                                         .foregroundColor( hit  ?  Color.blue : padSpec.keySpec.keyColor)
-                                        .overlay {
-                                            Text( subkeys[kn] )
-                                                .font(.system(size: keyData.subPad!.fontSize == nil ? padSpec.fontSize : keyData.subPad!.fontSize! ))
-                                                .bold()
-                                                .foregroundColor(padSpec.keySpec.textColor)
+                                        .if( key.text != nil ) { view in
+                                            view.overlay(
+                                                Text( key.text! )
+                                                    .font(.system(size: key.fontSize != nil ? key.fontSize! : (keyData.subPad!.fontSize != nil ? keyData.subPad!.fontSize! : padSpec.fontSize) ))
+                                                    .bold()
+                                                    .foregroundColor(padSpec.keySpec.textColor))
+                                        }
+                                        .if ( key.image != nil ) { view in
+                                            view.overlay(
+                                                Image(key.image!).renderingMode(.template).foregroundColor(padSpec.keySpec.textColor), alignment: .center)
                                         }
                                 }
                             }
@@ -280,7 +286,12 @@ struct KeyView: View {
                     let x = Int( (keyData.dragPt.x - keyData.popFrame.minX) / padSpec.keySpec.width )
                     
                     if let pad = keyData.subPad {
-                        keyData.hello.append("\nKeypress: \(pad.keys[x].text!)")
+                        if let txt = pad.keys[x].text{
+                            keyData.hello.append("\nKeypress: \(txt)")
+                        }
+                        else {
+                            keyData.hello.append("\nKeypress: ??")
+                        }
                     }
                 }
                 

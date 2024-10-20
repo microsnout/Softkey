@@ -139,7 +139,7 @@ func initKeyLayout() {
                        keys: [
                         Key(.acos, "acos"),
                         Key(.asin, "asin"),
-                        Key(.atan, "atan"),
+                        Key(.x2, image: .x2),
                         Key(.log,  "log"),
                         Key(.ln,   "ln")
                        ],
