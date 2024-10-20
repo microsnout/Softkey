@@ -171,19 +171,19 @@ struct SoftkeyApp: App {
             KeyStack() {
                 VStack {
                     Spacer()
-                    HStack( spacing: 0 ) {
+                    HStack {
                         KeypadView( padSpec: psFunctionsL )
                         Spacer()
                         KeypadView( padSpec: psFunctionsR )
                     }
                     Divider()
-                    HStack( spacing: 0 ) {
-                        VStack {
+                    HStack {
+                        VStack( spacing: 15 ) {
                             KeypadView( padSpec: psNumeric )
                             KeypadView( padSpec: psEnter )
                         }
                         Spacer()
-                        VStack {
+                        VStack( spacing: 15 ) {
                             KeypadView( padSpec: psOperations )
                             KeypadView( padSpec: psClear )
                         }
