@@ -127,6 +127,7 @@ let psFormatR = PadSpec (
 
 func initKeyLayout() {
     SubPadSpec.define( .sin,
+                       keySpec: ksSoftkey,
                        keys: [
                         Key(.sin, "sin"),
                         Key(.cos, "cos"),
@@ -136,6 +137,7 @@ func initKeyLayout() {
     )
     
     SubPadSpec.define( .log,
+                       keySpec: ksSoftkey,
                        keys: [
                         Key(.acos, "acos"),
                         Key(.asin, "asin"),
@@ -143,11 +145,12 @@ func initKeyLayout() {
                         Key(.log,  "log"),
                         Key(.ln,   "ln")
                        ],
-                       caption: "Functions",
-                       fontSize: 14.0
+                       fontSize: 14.0,
+                       caption: "Functions"
     )
     
     SubPadSpec.define( .xy,
+                       keySpec: ksSoftkey,
                        keys: [
                         Key(.xz, "X\u{21c6}Z", fontSize: 14.0),
                         Key(.xy, "X\u{21c6}Y", fontSize: 14.0),

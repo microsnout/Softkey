@@ -75,14 +75,16 @@ struct Key: Identifiable {
 
 struct SubPadSpec {
     var kc: KeyCode
+    var keySpec: KeySpec
     var keys: [Key]
+    var fontSize: Double
     var caption: String?
-    var fontSize: Double?
 
     static var specList: [KeyCode : SubPadSpec] = [:]
     
-    static func define( _ kc: KeyCode, keys: [Key], caption: String? = nil, fontSize: Double? = nil ) {
-        SubPadSpec.specList[kc] = SubPadSpec( kc: kc, keys: keys, caption: caption, fontSize: fontSize)
+    static func define( _ kc: KeyCode, keySpec: KeySpec, keys: [Key], fontSize: Double = 18.0, caption: String? = nil ) {
+        SubPadSpec.specList[kc] =
+            SubPadSpec( kc: kc, keySpec: keySpec, keys: keys, fontSize: fontSize, caption: caption)
     }
 }
 
@@ -139,25 +141,19 @@ struct ModalBlock: View {
 
 
 struct SubPopMenu: View {
-    let padSpec: PadSpec
-    
     @EnvironmentObject var keyData: KeyData
     
-    func hitRect( _ r:CGRect ) -> CGRect {
-        // Expand a rect to allow hits below the rect so finger does not block key
-        r.insetBy(dx: 0.0, dy: -padSpec.keySpec.height*2)
-    }
-
     var body: some View {
         if keyData.keyDown {
+            let keySpec = keyData.subPad!.keySpec
             let n = keyData.subPad!.keys.count
-            let keyW = padSpec.keySpec.width
-            let keyH = padSpec.keySpec.height
+            let keyW = keySpec.width
+            let keyH = keySpec.height
             let nkeys = 0..<n
             let subkeys = nkeys.map { keyData.subPad!.keys[$0] }
             let w = keyData.popFrame.width
             let keyRect = CGRect( origin: CGPoint.zero, size: CGSize( width: keyW, height: keyH)).insetBy(dx: keyInset/2, dy: keyInset/2)
-            let keySet  = nkeys.map { keyRect.offsetBy( dx: padSpec.keySpec.width*Double($0), dy: 0.0) }
+            let keySet  = nkeys.map { keyRect.offsetBy( dx: keySpec.width*Double($0), dy: 0.0) }
             let zOrigin = keyData.zFrame.origin
             let popH = keyData.subPad!.caption == nil ? keyH + keyInset : keyH + keyInset + popCaptionH
             
@@ -169,11 +165,11 @@ struct SubPopMenu: View {
 //
             Rectangle()
                 .frame( width: w + keyInset, height: popH)
-                .foregroundColor(padSpec.keySpec.keyColor)
-                .cornerRadius(padSpec.keySpec.radius*2)
+                .foregroundColor(keySpec.keyColor)
+                .cornerRadius(keySpec.radius*2)
                 .background {
-                    RoundedRectangle(cornerRadius: padSpec.keySpec.radius*2)
-                        .shadow(radius: padSpec.keySpec.radius*2)
+                    RoundedRectangle(cornerRadius: keySpec.radius*2)
+                        .shadow(radius: keySpec.radius*2)
                 }
                 .overlay {
                     GeometryReader { geo in
@@ -185,7 +181,7 @@ struct SubPopMenu: View {
                                     Text(caption)
                                         .bold()
                                         .font(.system(size: captionFont))
-                                        .foregroundColor(padSpec.keySpec.textColor)
+                                        .foregroundColor(keySpec.textColor)
                                         .frame( maxWidth: .infinity, alignment: .leading)
                                         .offset( x: 10, y: 4 )
 //                                    Spacer()
@@ -198,18 +194,18 @@ struct SubPopMenu: View {
                                     
                                     Rectangle()
                                         .frame( width: r.width, height: r.height )
-                                        .cornerRadius(padSpec.keySpec.radius)
-                                        .foregroundColor( kn == keyData.selSubIndex  ?  Color.blue : padSpec.keySpec.keyColor)
+                                        .cornerRadius(keySpec.radius)
+                                        .foregroundColor( kn == keyData.selSubIndex  ?  Color.blue : keySpec.keyColor)
                                         .if( key.text != nil ) { view in
                                             view.overlay(
                                                 Text( key.text! )
-                                                    .font(.system(size: key.fontSize != nil ? key.fontSize! : (keyData.subPad!.fontSize != nil ? keyData.subPad!.fontSize! : padSpec.fontSize) ))
+                                                    .font(.system(size: key.fontSize != nil ? key.fontSize! : keyData.subPad!.fontSize))
                                                     .bold()
-                                                    .foregroundColor(padSpec.keySpec.textColor))
+                                                    .foregroundColor(keySpec.textColor))
                                         }
                                         .if ( key.image != nil ) { view in
                                             view.overlay(
-                                                Image(key.image!).renderingMode(.template).foregroundColor(padSpec.keySpec.textColor), alignment: .center)
+                                                Image(key.image!).renderingMode(.template).foregroundColor(keySpec.textColor), alignment: .center)
                                         }
                                 }
                             }
@@ -218,7 +214,7 @@ struct SubPopMenu: View {
                         }
                     }
                 }
-                .position(x: keyData.popFrame.minX - zOrigin.x + w/2, y: keyData.keyOrigin.y - zOrigin.y - keyData.popFrame.height/2 - padSpec.keySpec.radius )
+                .position(x: keyData.popFrame.minX - zOrigin.x + w/2, y: keyData.keyOrigin.y - zOrigin.y - keyData.popFrame.height/2 - keySpec.radius )
         }
     }
 }
@@ -486,7 +482,7 @@ struct KeyStack<Content: View>: View {
             
             ModalBlock()
             
-            SubPopMenu( padSpec: psFunc1 )
+            SubPopMenu()
         }
         .onGeometryChange( for: CGRect.self, of: {proxy in proxy.frame(in: .global)} ) { newValue in
             keyData.zFrame = newValue
